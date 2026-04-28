@@ -4,7 +4,7 @@ metadata:
   name: '{{.Release.Name}}-{{ .Values.webhookservice.name }}'
   namespace: {{ .Release.Namespace }}
   labels:
-    contrast-agent: flex
+    contrast-agent: python
 spec:
   selector:
     matchLabels:
