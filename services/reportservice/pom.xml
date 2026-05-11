@@ -20,7 +20,7 @@
     </properties>
 
     <dependencies>
-        <!-- Vulnerable XDocReport FreeMarker dependency (CVE-2025-66474) -->
+        <!-- Vulnerable XDocReport FreeMarker dependency (CVE-2025-64087) -->
         <dependency>
             <groupId>fr.opensagres.xdocreport</groupId>
             <artifactId>fr.opensagres.xdocreport.template.freemarker</artifactId>

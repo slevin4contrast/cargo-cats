@@ -16,7 +16,7 @@ This document details the intentional security vulnerabilities present in the Ca
 10. [Insecure Session Management - Missing HTTPOnly Flag](#10-insecure-session-management---missing-httponly-flag)
 11. [XML External Entity (XXE) - Document Processing Service](#11-xml-external-entity-xxe---document-processing-service)
 12. [Untrusted Deserialization - Address Import Feature](#12-untrusted-deserialization---address-import-feature)
-13. [Server-Side Template Injection / RCE (CVE-2025-66474) - Report Service](#13-server-side-template-injection--rce-cve-2025-66474---report-service)
+13. [Server-Side Template Injection / RCE (CVE-2025-64087) - Report Service](#13-server-side-template-injection--rce-cve-2025-64087---report-service)
 
 ---
 
@@ -536,7 +536,7 @@ The address import functionality in the frontgateservice accepts serialized Java
 
 ---
 
-### 13. Server-Side Template Injection / RCE (CVE-2025-66474) - Report Service
+### 13. Server-Side Template Injection / RCE (CVE-2025-64087) - Report Service
 
 **Vulnerability Details:**
 The report service uses XDocReport FreeMarker template engine v2.1.0, which allows Server-Side Template Injection (SSTI) via the unrestricted `?new` operator, enabling instantiation of `freemarker.template.utility.Execute` for Remote Code Execution.

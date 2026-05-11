@@ -639,7 +639,7 @@ def exploit_list():
         {"name": "SSJS Injection", "endpoint": "/exploit/ssjs-injection", "description": "Server-side JavaScript injection"},
         {"name": "XXE", "endpoint": "/exploit/xxe", "description": "XML External Entity injection"},
         {"name": "Insecure Deserialization", "endpoint": "/exploit/deserialization", "description": "Java Insecure Deserialization exploit using address import functionality"},
-        {"name": "SSTI", "endpoint": "/exploit/ssti", "description": "FreeMarker Server-Side Template Injection (CVE-2025-66474)"}
+        {"name": "SSTI", "endpoint": "/exploit/ssti", "description": "FreeMarker Server-Side Template Injection (CVE-2025-64087)"}
     ]
     
     return jsonify({
@@ -1474,7 +1474,7 @@ def run_deserialization_exploit(session):
         return False
 
 def run_ssti_exploit(session):
-    """Execute FreeMarker SSTI exploit via report template generation (CVE-2025-66474)"""
+    """Execute FreeMarker SSTI exploit via report template generation (CVE-2025-64087)"""
     log_exploit_output("Executing FreeMarker SSTI exploit via report template generation")
     
     try:
@@ -1626,7 +1626,7 @@ def exploit():
         run_deserialization_exploit(session)
 
         # ================================================
-        # SSTI EXPLOIT (CVE-2025-66474)
+        # SSTI EXPLOIT (CVE-2025-64087)
         # ================================================
         exploit_state = "ssti_exploit"
         if check_exploit_stop("SSTI"):

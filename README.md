@@ -54,7 +54,7 @@ This documentation covers:
 - Command Injection
 - Path Traversal
 - XML External Entity (XXE) Injection
-- Server-Side Template Injection (SSTI) / RCE (CVE-2025-66474)
+- Server-Side Template Injection (SSTI) / RCE (CVE-2025-64087)
 - Server-Side JavaScript Injection (SSJS)
 - Untrusted Deserialization
 - Weak Password Storage (MD5 Hashing)

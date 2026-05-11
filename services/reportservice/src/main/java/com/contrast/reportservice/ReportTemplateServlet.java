@@ -16,7 +16,7 @@ import java.io.StringWriter;
  * ReportTemplateServlet - Processes shipping report templates using FreeMarker.
  * 
  * VULNERABLE: Uses XDocReport FreeMarker template engine v2.1.0 which is
- * susceptible to Server-Side Template Injection (SSTI) via CVE-2025-66474.
+ * susceptible to Server-Side Template Injection (SSTI) via CVE-2025-64087.
  * 
  * The vulnerability allows attackers to inject malicious FreeMarker directives
  * that can instantiate arbitrary Java classes and execute system commands.
