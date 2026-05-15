@@ -2043,6 +2043,26 @@ def traffic():
         r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data_2, timeout=10, allow_redirects=False)
         log_traffic_output(f"Second report generation POST - Status: {r.status_code}")
 
+        # ================================================
+        # PHASE 10: AI API INTEGRATION
+        # ================================================
+        traffic_state = "ai_integration"
+        log_traffic_output("Phase 10: AI API integration")
+        
+        # AI service health check
+        try:
+            r = session.get("http://cargocats.localhost/api/ai/health", timeout=5, allow_redirects=False)
+            log_traffic_output(f"AI service health check - Status: {r.status_code}")
+        except Exception as e:
+            log_traffic_output(f"AI health check failed: {str(e)}", "WARNING")
+        
+        # OpenAI API call
+        try:
+            r = session.get("http://cargocats.localhost/api/ai/openai?prompt=What%20are%20the%20best%20practices%20for%20shipping%20cats%20safely?", timeout=10, allow_redirects=False)
+            log_traffic_output(f"AI OpenAI API call - Status: {r.status_code}")
+        except Exception as e:
+            log_traffic_output(f"AI OpenAI call failed: {str(e)}", "WARNING")
+
         traffic_state = "finished"
         log_traffic_output("Traffic generation completed successfully")
         

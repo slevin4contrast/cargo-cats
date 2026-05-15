@@ -19,6 +19,10 @@ spec:
       labels:
         app: {{ .Values.cargocatsDataservice.name }}
     spec:
+      hostAliases:
+        - ip: "127.0.0.1"
+          hostnames:
+            - "mock-openai"
       containers:
         - name: {{ .Values.cargocatsDataservice.name }}
           image: {{ .Values.cargocatsDataservice.image }} 
