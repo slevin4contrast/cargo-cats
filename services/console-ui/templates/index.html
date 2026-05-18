@@ -797,6 +797,27 @@
         
         <div class="card">
             <div class="card-header">
+                <h2>🤖 AI Shipping Advisor</h2>
+            </div>
+            <div class="card-description">
+                <p>Sends a prompt to the app's AI service via the OpenAI Java SDK, triggering Contrast AI Usage Security Observability detection. The call goes through the app stack: frontgateservice → dataservice → Ollama.</p>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                <input type="text" id="aiPromptInput"
+                       style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Poppins', sans-serif; font-size: 14px;"
+                       value="What are the best practices for shipping cats safely?"
+                       placeholder="Enter a prompt..."
+                       onkeydown="if(event.key==='Enter') sendAiPrompt()">
+                <button onclick="sendAiPrompt()" id="aiSendBtn"
+                        style="padding: 8px 20px; background: linear-gradient(135deg, #38B885 0%, #005A70 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-family: 'Poppins', sans-serif; font-size: 14px; white-space: nowrap;">
+                    Ask AI
+                </button>
+            </div>
+            <div id="aiResponse" class="logs" style="min-height: 60px; display: none;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
                 <h2>🔥 Effective Exploits</h2>
                 <div class="header-controls">
                     <button id="exploitStartBtn" class="btn-start" onclick="startExploit()">Start</button>
@@ -1424,6 +1445,28 @@
                 });
         }
         
+        // AI Shipping Advisor
+        async function sendAiPrompt() {
+            const prompt = document.getElementById('aiPromptInput').value.trim();
+            if (!prompt) return;
+            const responseDiv = document.getElementById('aiResponse');
+            const btn = document.getElementById('aiSendBtn');
+            btn.disabled = true;
+            btn.textContent = 'Asking...';
+            responseDiv.style.display = 'block';
+            responseDiv.textContent = '⏳ Waiting for AI response...';
+            try {
+                const res = await fetch('http://cargocats.localhost/api/ai/openai?prompt=' + encodeURIComponent(prompt));
+                const text = await res.text();
+                responseDiv.textContent = '🤖 ' + text;
+            } catch (e) {
+                responseDiv.textContent = '⚠️ AI service unavailable. Is cargocats.localhost reachable?';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Ask AI';
+            }
+        }
+
         // Traffic functions
         function startTraffic() {
             showTrafficLoading(true);

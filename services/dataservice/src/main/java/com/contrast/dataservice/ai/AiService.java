@@ -27,7 +27,7 @@ public class AiService {
     @Value("${ai.demo.openai.base-url:http://ollama:11434/v1}")
     private String openaiBaseUrl;
 
-    @Value("${ai.demo.model:smollm:135m}")
+    @Value("${ai.demo.model:smollm2:135m}")
     private String modelName;
 
     private OpenAIClient openAIClient;

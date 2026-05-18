@@ -37,7 +37,7 @@ reportservice:
   name: reportservice
 
 ollama:
-  model: smollm:135m
+  model: smollm2:135m
 
 opensearch:
   initialAdminPassword: "Contrast@123!"

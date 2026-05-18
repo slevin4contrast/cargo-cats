@@ -7,11 +7,11 @@ This document describes the AI API integration feature in the dataservice, which
 The AI Service makes real chat completion calls using:
 - **OpenAI Java SDK** — pointed at a local [Ollama](https://ollama.com) instance running as a Kubernetes pod
 
-No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm:135m` (~270 MB), the smallest available Ollama model.
+No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm2:135m` (~270 MB), the smallest available Ollama model.
 
 ## How It Works
 
-When the dataservice starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
+When the dataservice starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm2:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
 
 ### Architecture
 
@@ -80,8 +80,8 @@ ai.demo.enabled=true
 # Ollama base URL (default: http://ollama:11434/v1)
 ai.demo.openai.base-url=http://ollama:11434/v1
 
-# Model to use — must be available in the Ollama pod (default: smollm:135m)
-ai.demo.model=smollm:135m
+# Model to use — must be available in the Ollama pod (default: smollm2:135m)
+ai.demo.model=smollm2:135m
 ```
 
 ### Changing the Model
@@ -110,7 +110,7 @@ When the Contrast Java agent is attached, it instruments the OpenAI SDK and emit
 | Field | Value |
 |---|---|
 | `ai_usage.api_provider` | `openai` |
-| `ai_usage.model` | `smollm:135m` (or whichever model is configured) |
+| `ai_usage.model` | `smollm2:135m` (or whichever model is configured) |
 | `ai_usage.api_url` | `http://ollama:11434/v1` |
 | `event_name` | `ai_usage` |
 
@@ -197,7 +197,7 @@ kubectl rollout restart deployment/contrast-cargo-cats-dataservice
 
 ### Slow responses
 
-Ollama runs on CPU inside Docker Desktop. Expect 2–10 seconds per request for `smollm:135m`. This is expected and still fully exercises the Contrast instrumentation.
+Ollama runs on CPU inside Docker Desktop. Expect 2–10 seconds per request for `smollm2:135m`. This is expected and still fully exercises the Contrast instrumentation.
 
 ### Contrast agent not detecting calls
 
