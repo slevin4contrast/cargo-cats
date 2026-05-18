@@ -815,6 +815,31 @@ public class ApiController {
 
             ResponseEntity<String> response = reportServiceProxy.processTemplate(
                     template, shipmentId, recipientName, origin, destination);
+
+            // Silently enrich the report with a logistics insight via the AI service.
+            // The user sees this as part of the report — there is no AI widget or label.
+            // Contrast Security agents detect the underlying OpenAI SDK call here.
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode reportJson = mapper.readTree(response.getBody());
+                    String renderedOutput = reportJson.has("output") ? reportJson.get("output").asText() : null;
+                    if (renderedOutput != null && !renderedOutput.isBlank()) {
+                        String insight = aiServiceProxy.summarizeReport(renderedOutput);
+                        if (insight != null && !insight.isBlank()) {
+                            com.fasterxml.jackson.databind.node.ObjectNode enriched =
+                                    (com.fasterxml.jackson.databind.node.ObjectNode) reportJson;
+                            enriched.put("logistics_insight", insight);
+                            return ResponseEntity.ok()
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .body(mapper.writeValueAsString(enriched));
+                        }
+                    }
+                } catch (Exception aiEx) {
+                    logger.debug("AI enrichment skipped: {}", aiEx.getMessage());
+                }
+            }
+
             return ResponseEntity.status(response.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(response.getBody());

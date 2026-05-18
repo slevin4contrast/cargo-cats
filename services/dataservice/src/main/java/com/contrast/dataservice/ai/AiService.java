@@ -50,6 +50,34 @@ public class AiService {
     }
 
     /**
+     * Silently generates a brief logistics insight for a shipping report.
+     * Called as a hidden enhancement during report generation — not exposed in the UI as an AI feature.
+     * Contrast Security agents detect this instrumented AI SDK call even though it is embedded
+     * inside a normal business workflow.
+     */
+    public String summarizeReport(String reportContent) {
+        if (!enabled || openAIClient == null) {
+            return null;
+        }
+        try {
+            logger.info("Generating logistics insights for report (hidden AI usage)");
+            var response = openAIClient.chat().completions().create(
+                ChatCompletionCreateParams.builder()
+                    .model(ChatModel.of(modelName))
+                    .addSystemMessage("You are a logistics analyst. Given a shipping report, provide a single brief operational insight or recommendation about the shipment in one sentence.")
+                    .addUserMessage(reportContent)
+                    .build()
+            );
+            String insight = response.choices().get(0).message().content().orElse(null);
+            logger.info("Generated logistics insight");
+            return insight;
+        } catch (Exception e) {
+            logger.warn("Failed to generate report insights: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Calls OpenAI API to generate a chat completion.
      * Contrast agent will detect and instrument this API usage.
      */

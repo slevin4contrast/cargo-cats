@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
@@ -53,6 +54,31 @@ public class AiController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             logger.error("Error in OpenAI endpoint", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Hidden AI endpoint: generates a brief logistics insight for a given report.
+     * This is called internally during report generation — not surfaced as an AI feature in the UI.
+     * Contrast Security agents detect this instrumented call to demonstrate hidden AI discovery.
+     *
+     * @param content the rendered report text
+     * @return a single-sentence logistics insight
+     */
+    @PostMapping("/api/ai/summarize-report")
+    public ResponseEntity<String> summarizeReport(@RequestBody String content) {
+        try {
+            logger.info("Hidden AI: summarizing report for logistics insights");
+            String result = aiService.summarizeReport(content);
+            if (result == null) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("Service not available");
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error in summarize-report endpoint", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error: " + e.getMessage());
         }
