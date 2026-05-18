@@ -36,6 +36,9 @@ reportservice:
   image: reportservice:latest
   name: reportservice
 
+ollama:
+  model: smollm:135m
+
 opensearch:
   initialAdminPassword: "Contrast@123!"
 

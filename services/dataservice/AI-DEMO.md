@@ -1,42 +1,46 @@
 # AI API Integration
 
-This document describes the AI API integration feature in the dataservice, which demonstrates how Contrast Security agents detect API usage in customer applications.
+This document describes the AI API integration feature in the dataservice, which demonstrates how Contrast Security agents detect AI SDK usage in customer applications.
 
 ## Overview
 
-The AI Service demonstrates API detection for:
-- **OpenAI SDK** - Chat completions API at `http://mock-openai:8888`
+The AI Service makes real chat completion calls using:
+- **OpenAI Java SDK** — pointed at a local [Ollama](https://ollama.com) instance running as a Kubernetes pod
 
-By default, all API calls are **intercepted by a mock HTTP server**, so no actual API calls are made. This allows the Contrast Security agents to instrument and observe API usage without requiring real API keys or making external requests.
-
-The domain name (`mock-openai`) resolves to `localhost` via Kubernetes `hostAliases` configuration, creating a realistic-looking API URL while keeping everything local.
+No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm:135m` (~270 MB), the smallest available Ollama model.
 
 ## How It Works
 
-### Default Behavior (Enabled)
-
-When the dataservice starts:
-
-1. **Mock HTTP server** starts on `localhost:8888`
-2. **OpenAI client** is initialized pointing to the mock server
-3. Mock endpoint is configured to return realistic responses
-4. API calls go to the mock server instead of real endpoints
-5. **Contrast agents instrument the calls** and log API usage events
+When the dataservice starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
 
 ### Architecture
 
 ```
-dataservice
-  ↓
-[AiService]
-  ├─ Starts mock HTTP server on port 8888
-  ├─ Initializes OpenAI client (points to mock)
-  └─ Configures mock /chat/completions endpoint
-
-[AiController]
-  ├─ GET /api/ai/health - Health check
-  └─ GET /api/ai/openai - Demo OpenAI call
+[Browser / Traffic Generator]
+          ↓
+[frontgateservice]  →  GET /api/ai/openai?prompt=...
+          ↓
+[dataservice — AiController]
+          ↓
+[AiService — OpenAI Java SDK]
+          ↓
+[Ollama pod — ollama:11434/v1]   (OpenAI-compatible)
+          ↓
+  qwen2.5:0.5b model (real inference)
 ```
+
+### Startup Sequence
+
+1. Ollama pod starts and launches `ollama serve`
+2. Startup script pulls the configured model into the PVC (cached on subsequent restarts)
+3. Ollama readiness probe passes once `/api/tags` responds
+4. dataservice initializes the OpenAI client pointing at `http://ollama:11434/v1`
+5. Contrast agent instruments the OpenAI SDK at load time
+
+## Prerequisites
+
+- **Docker Desktop memory: 12 GB minimum, 14 GB recommended** (Settings → Resources → Memory). The default 8 GB is not sufficient for the full stack plus Ollama.
+- Kubernetes cluster is running and `make deploy` has been executed
 
 ## Testing the Demo
 
@@ -47,23 +51,22 @@ dataservice
 
 ### Endpoints
 
-#### 1. Health Check
+#### Health Check
 ```bash
-curl http://localhost:8080/api/ai/health
+curl http://cargocats.localhost/api/ai/health
 ```
 
-Response (service enabled):
-```
-AI Service is operational
-```
-
-#### 2. OpenAI API Call
+#### OpenAI API Call (through ingress)
 ```bash
-# Without custom prompt
-curl http://localhost:8080/api/ai/openai
+curl "http://cargocats.localhost/api/ai/openai?prompt=What%20are%20best%20practices%20for%20shipping%20cats%20safely?"
+```
 
-# With custom prompt
-curl "http://localhost:8080/api/ai/openai?prompt=What%20is%20AI?"
+Returns a real response from the local model. First call after pod startup may take 5–20 seconds on CPU.
+
+#### Direct to dataservice (with port-forward)
+```bash
+kubectl port-forward svc/contrast-cargo-cats-dataservice 8080:8080
+curl "http://localhost:8080/api/ai/openai?prompt=Hello"
 ```
 
 ## Configuration
@@ -71,17 +74,23 @@ curl "http://localhost:8080/api/ai/openai?prompt=What%20is%20AI?"
 Edit [application.properties](src/main/resources/application.properties):
 
 ```properties
-# Enable/disable service (default: true)
+# Enable/disable AI service (default: true)
 ai.demo.enabled=true
 
-# Mock server port (default: 8888)
-ai.demo.port=8888
+# Ollama base URL (default: http://ollama:11434/v1)
+ai.demo.openai.base-url=http://ollama:11434/v1
 
-# Mock server host (default: localhost - used as the server binding address)
-ai.demo.host=localhost
+# Model to use — must be available in the Ollama pod (default: smollm:135m)
+ai.demo.model=smollm:135m
+```
 
-# Domain name for API clients (must be resolvable in Kubernetes via hostAliases)
-ai.demo.openai.host=mock-openai          # OpenAI SDK will connect to http://mock-openai:8888
+### Changing the Model
+
+Update `values.yaml` to change the model pulled by the Ollama pod and used by the dataservice:
+
+```yaml
+ollama:
+  model: llama3.2   # or any model available at https://ollama.com/library
 ```
 
 ### Disabling the Service
@@ -94,189 +103,109 @@ ai.demo.enabled=false
 
 When disabled, the service will skip initialization and endpoints will return error responses.
 
-### Kubernetes Configuration
+## What Contrast Agents Observe
 
-The Helm chart automatically configures DNS resolution for the mock domain via `hostAliases` in [dataservice.yaml](../../contrast-cargo-cats/templates/dataservice.yaml):
+When the Contrast Java agent is attached, it instruments the OpenAI SDK and emits `ai_usage` log records for every call:
 
-```yaml
-hostAliases:
-  - ip: "127.0.0.1"
-    hostnames:
-      - "mock-openai"
-```
+| Field | Value |
+|---|---|
+| `ai_usage.api_provider` | `openai` |
+| `ai_usage.model` | `smollm:135m` (or whichever model is configured) |
+| `ai_usage.api_url` | `http://ollama:11434/v1` |
+| `event_name` | `ai_usage` |
 
-This ensures the domain resolves to `localhost` inside the Kubernetes pod.
+These appear in the Contrast UI under **AI Usage** in the Security Observability section, identical to observations from production apps calling `api.openai.com`.
 
-### Disabling Demo Mode
+## Demo Flow for SEs
 
-To disable demo mode and use real APIs:
-
-```properties
-ai.demo.enabled=false
-```
-
-When disabled, the service will skip initialization and return "Demo mode disabled" from endpoints.
-
-## API Calls Observed by Contrast Agents
-
-When the Contrast Security Java agent is attached, it will detect and log:
-
-### OpenAI Calls
-- **API Provider**: `openai`
-- **Model**: `gpt-4-turbo`
-- **Endpoint**: `http://mock-openai:8888/chat/completions`
-- **Method**: `ChatCompletionServiceImpl.create()`
-
-Log records will include:
-- `ai_usage.model` - The model being used
-- `ai_usage.api_provider` - The provider (openai)
-- `ai_usage.api_url` - The URL being called
-- Stack trace showing the call origin
-
-## Mock Responses
-
-The mock server is configured to return realistic responses for each endpoint:
-
-### OpenAI Chat Completions Response
-```json
-{
-  "id": "chatcmpl-demo-123",
-  "object": "chat.completion",
-  "created": 1234567890,
-  "model": "gpt-4",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "This is a demo response from mock server"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 20,
-    "total_tokens": 30
-  }
-}
-```
-
-## Demo Flow
-
-### In Kubernetes (Default)
-
-1. **Deploy with Helm** - Kubernetes automatically configures hostAliases
+1. **Deploy the stack**
    ```bash
-   helm install cargo-cats contrast-cargo-cats/
+   make deploy
    ```
 
-2. **Verify service is running**
+2. **Wait for Ollama to be ready** (~30s on first run while the model downloads)
    ```bash
-   kubectl port-forward svc/dataservice 8080:8080
-   curl http://localhost:8080/api/ai/health
+   kubectl rollout status deployment/ollama
    ```
 
-3. **Trigger API endpoint** - The mock domain is already resolved via hostAliases
+3. **Trigger the AI endpoint** (or let the traffic generator do it automatically)
    ```bash
-   curl "http://localhost:8080/api/ai/openai?prompt=Hello"
-   ```
-
-### Local Development (Docker/localhost)
-
-If running locally, you need to configure DNS resolution. Add to `/etc/hosts`:
-
-```
-127.0.0.1 mock-openai
-```
-
-Or update `application.properties` to use localhost:
-
-```properties
-ai.demo.openai.host=localhost
-```
-
-### With Contrast Agent
-
-1. **Start dataservice with Contrast agent**
-   ```bash
-   java -javaagent:/path/to/contrast.jar \
-        -Dcontrast.config.path=/path/to/contrast.properties \
-        -jar target/dataservice-0.0.1-SNAPSHOT.jar
-   ```
-
-2. **Verify service is running**
-   ```bash
-   curl http://localhost:8080/api/ai/health
-   ```
-
-3. **Trigger API endpoint** - If running locally, ensure `/etc/hosts` is configured
-   ```bash
-   curl http://localhost:8080/api/ai/openai
+   curl "http://cargocats.localhost/api/ai/openai?prompt=Hello"
    ```
 
 4. **Observe in Contrast UI**
-   - Check TeamServer/SaaS for AI usage observations
-   - Look for log records with `event_name: "ai_usage"`
-   - See model names and API provider information
-   - URLs will show `http://mock-openai:8888`
+   - Navigate to the application in TeamServer/SaaS
+   - Look for **AI Usage** observations
+   - You will see `ai_usage.api_url = http://ollama:11434/v1` and the model name
 
 ## Implementation Details
 
 ### Service Class: `AiService`
 
-- **Initialization** (`@PostConstruct`): Starts WireMock and initializes clients
-- **Mock Setup**: Configures endpoints for OpenAI and Anthropic
+- **Initialization** (`@PostConstruct`): Initializes the OpenAI client pointing at Ollama
 - **Methods**:
-  - `openai(prompt)` - Calls OpenAI chat completion API
-  - `anthropic(prompt)` - Calls Anthropic message API
-  - `multiProvider(prompt)` - Calls both APIs in sequence
-- **Cleanup** (`@PreDestroy`): Stops WireMock and closes clients
+  - `openai(prompt)` — Calls the Ollama-served chat completion API via the OpenAI Java SDK
+  - `isEnabled()` — Returns whether the service is active
+- **Cleanup** (`@PreDestroy`): Closes the OpenAI client
 
 ### Controller Class: `AiController`
 
-- **Health Endpoint**: `/api/ai/health`
-- **OpenAI Endpoint**: `/api/ai/openai` (GET)
-- **Anthropic Endpoint**: `/api/ai/anthropic` (GET)
-- **Multi-Provider Endpoint**: `/api/ai/multi-provider` (POST)
+- **Health Endpoint**: `GET /api/ai/health`
+- **OpenAI Endpoint**: `GET /api/ai/openai?prompt=<text>`
 
 ## Benefits
 
-✅ **No Real API Calls** - All calls are intercepted by WireMock
-✅ **No API Keys Required** - Uses test keys (`sk-test-key`, `sk-ant-test-key`)
-✅ **Realistic URLs** - Shows `http://mock-openai:8888/v1/...` and `http://mock-anthropic:8888/v1/...`
-✅ **Agent Instrumentation** - Contrast agents fully instrument the libraries
-✅ **Easy to Control** - Single property to enable/disable
-✅ **Fast Responses** - Mock responses are instant
-✅ **Container DNS** - Kubernetes hostAliases automatically resolve mock domains to localhost
+✅ **Real AI Responses** — Ollama runs an actual language model inside the cluster  
+✅ **No External API Keys** — Uses `apiKey("ollama")` as a placeholder  
+✅ **Realistic URL** — Agent captures `http://ollama:11434/v1` as the provider URL  
+✅ **Agent Instrumentation** — Contrast agents fully instrument the OpenAI Java SDK  
+✅ **Configurable Model** — Change `ollama.model` in `values.yaml` to use any Ollama-supported model  
+✅ **Model Caching** — PVC stores the downloaded model; restarts are instant after first pull  
 
 ## Troubleshooting
 
-### Port Already in Use
+### Ollama pod stuck in `Pending` or `Init`
 
-If port 8888 is already in use:
+Most likely cause: insufficient Docker Desktop memory.
 
-```properties
-ai.demo.port=8889
+- Go to **Docker Desktop → Settings → Resources → Memory**
+- Set to at least **12 GB** and apply
+- Run `make deploy` again
+
+Check Ollama logs:
+```bash
+kubectl logs deployment/ollama
 ```
 
-### Service Not Initializing
+### Model pull fails
 
-Check logs for:
-```
-Initializing AiService. Mock mode enabled: true
-WireMock server started on port 8888
-OpenAI client initialized with base URL: http://mock-openai:8888
-Anthropic client initialized with base URL: http://mock-anthropic:8888
+Check internet connectivity from the pod and verify the model name is valid:
+```bash
+kubectl exec deployment/ollama -- ollama list
 ```
 
-### Contrast Agent Not Detecting Calls
+Available models: https://ollama.com/library
+
+### dataservice fails to connect to Ollama
+
+The dataservice starts before Ollama finishes pulling its model. Wait for Ollama to be ready, then restart the dataservice:
+
+```bash
+kubectl rollout status deployment/ollama
+kubectl rollout restart deployment/contrast-cargo-cats-dataservice
+```
+
+### Slow responses
+
+Ollama runs on CPU inside Docker Desktop. Expect 2–10 seconds per request for `smollm:135m`. This is expected and still fully exercises the Contrast instrumentation.
+
+### Contrast agent not detecting calls
 
 Ensure:
-- Contrast agent is properly attached
-- `contrast.observe.ai_model_usage=true` is set
-- Service is running with `ai.demo.enabled=true`
-- Endpoints are being called
+- Contrast agent is properly attached to the dataservice pod
+- `ai.demo.enabled=true` in application.properties
+- The Ollama pod is `Running` and passing its readiness probe
+- The endpoint is being reached (check dataservice logs for `Calling OpenAI API`)
 
 ## Dependencies
 

@@ -2058,7 +2058,7 @@ def traffic():
         
         # OpenAI API call
         try:
-            r = session.get("http://cargocats.localhost/api/ai/openai?prompt=What%20are%20the%20best%20practices%20for%20shipping%20cats%20safely?", timeout=10, allow_redirects=False)
+            r = session.get("http://cargocats.localhost/api/ai/openai?prompt=What%20are%20the%20best%20practices%20for%20shipping%20cats%20safely?", timeout=60, allow_redirects=False)
             log_traffic_output(f"AI OpenAI API call - Status: {r.status_code}")
         except Exception as e:
             log_traffic_output(f"AI OpenAI call failed: {str(e)}", "WARNING")
