@@ -16,6 +16,8 @@ spec:
         agent:
           logger:
             level: INFO
+        server:
+          environment: QA
 ---
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: ClusterAgentConnection

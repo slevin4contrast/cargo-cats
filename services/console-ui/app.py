@@ -158,7 +158,7 @@ def hello_world():
     # Format the contrast URL with org ID and uniq name if available
     formatted_contrast_url = ''
     if contrast_org_id and contrast_uniq_name and contrast_base_url:
-        formatted_contrast_url = f"{contrast_base_url}/Contrast/cs/index.html#/{contrast_org_id}/explorer?search={contrast_uniq_name}-contrast-cargo-cats"
+        formatted_contrast_url = f"{contrast_base_url}/Contrast/cs/index.html#/{contrast_org_id}/explorer?search={contrast_uniq_name}-cargocats&environment=QA"
     
     return render_template('index.html', 
                            contrast_url=formatted_contrast_url,
@@ -714,8 +714,8 @@ def delete_all():
         
         logger.info(f"Filtering applications by unique name: {contrast_uniq_name}")
         
-        # Filter by unique name plus "-contrast-cargo-cats" suffix
-        filter_name = f"{contrast_uniq_name}-contrast-cargo-cats"
+        # Filter by unique name plus "-cargocats" suffix
+        filter_name = f"{contrast_uniq_name}-cargocats"
         logger.info(f"Using filter name: {filter_name}")
         
         applications_url = f"{contrast_base_url}/Contrast/api/ng/{contrast_org_id}/applications/filter?includeMerged=true"
