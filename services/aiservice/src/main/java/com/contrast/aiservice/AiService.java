@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
@@ -34,6 +36,7 @@ public class AiService {
             openAIClient = OpenAIOkHttpClient.builder()
                 .baseUrl(openaiBaseUrl)
                 .apiKey("ollama")
+                .timeout(Duration.ofSeconds(90))
                 .build();
             logger.info("OpenAI client initialized. Base URL: {}, model: {}", openaiBaseUrl, modelName);
         }
