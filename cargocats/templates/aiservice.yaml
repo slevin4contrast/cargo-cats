@@ -32,6 +32,8 @@ spec:
             value: "http://ollama:11434/v1"
           - name: AI_DEMO_MODEL
             value: {{ .Values.ollama.model | quote }}
+          - name: AI_DEMO_ENABLED
+            value: {{ .Values.ai.chatbotEnabled | quote }}
           ports:
             - containerPort: 8080
           resources:

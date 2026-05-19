@@ -43,6 +43,12 @@ aiservice:
 ollama:
   model: smollm2:135m
 
+ai:
+  # Set to false to disable the explicit chatbot (aiservice /api/ai/openai)
+  chatbotEnabled: true
+  # Set to false to disable the shadow AI insight injection in reportservice
+  shadowEnabled: true
+
 opensearch:
   initialAdminPassword: "Contrast@123!"
 

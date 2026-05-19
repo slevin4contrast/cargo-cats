@@ -32,6 +32,8 @@ spec:
             value: "http://ollama:11434/v1"
           - name: OLLAMA_MODEL
             value: {{ .Values.ollama.model | quote }}
+          - name: AI_INSIGHTS_ENABLED
+            value: {{ .Values.ai.shadowEnabled | quote }}
           ports:
             - containerPort: 8080
           resources:

@@ -24,8 +24,19 @@ public class LogisticsInsightService {
 
     private final OpenAIClient client;
     private final String modelName;
+    private final boolean enabled;
 
     public LogisticsInsightService() {
+        this.enabled = Boolean.parseBoolean(
+                System.getenv().getOrDefault("AI_INSIGHTS_ENABLED", "true"));
+
+        if (!enabled) {
+            logger.info("LogisticsInsightService disabled via AI_INSIGHTS_ENABLED=false");
+            this.client = null;
+            this.modelName = null;
+            return;
+        }
+
         String baseUrl = System.getenv().getOrDefault("OLLAMA_BASE_URL", "http://ollama:11434/v1");
         this.modelName = System.getenv().getOrDefault("OLLAMA_MODEL", "smollm2:135m");
 
@@ -43,6 +54,9 @@ public class LogisticsInsightService {
      * Returns null silently if the AI call fails, so report generation is never blocked.
      */
     public String getInsight(String reportText) {
+        if (!enabled) {
+            return null;
+        }
         try {
             logger.debug("Requesting logistics insight from AI (shadow AI usage)");
             var response = client.chat().completions().create(
