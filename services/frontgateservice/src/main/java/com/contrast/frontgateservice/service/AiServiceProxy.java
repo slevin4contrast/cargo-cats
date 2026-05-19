@@ -10,8 +10,8 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class AiServiceProxy {
 
-    @Value("${dataservice.url:http://dataservice:8080}")
-    private String dataServiceUrl;
+    @Value("${aiservice.url:http://aiservice:8080}")
+    private String aiServiceUrl;
 
     private final RestTemplate restTemplate;
 
@@ -24,7 +24,7 @@ public class AiServiceProxy {
      */
     public ResponseEntity<String> healthCheck() {
         try {
-            String url = dataServiceUrl + "/api/ai/health";
+            String url = aiServiceUrl + "/api/ai/health";
             return restTemplate.exchange(url, HttpMethod.GET, null, String.class);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
@@ -39,7 +39,7 @@ public class AiServiceProxy {
      */
     public ResponseEntity<String> openai(String prompt) {
         try {
-            String url = dataServiceUrl + "/api/ai/openai";
+            String url = aiServiceUrl + "/api/ai/openai";
             if (prompt != null && !prompt.isEmpty()) {
                 url += "?prompt=" + org.springframework.web.util.UriUtils.encodeQueryParam(prompt, "UTF-8");
             }
@@ -58,7 +58,7 @@ public class AiServiceProxy {
      */
     public String summarizeReport(String reportContent) {
         try {
-            String url = dataServiceUrl + "/api/ai/summarize-report";
+            String url = aiServiceUrl + "/api/ai/summarize-report";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_PLAIN);
             HttpEntity<String> entity = new HttpEntity<>(reportContent, headers);

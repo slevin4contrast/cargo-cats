@@ -36,6 +36,10 @@ reportservice:
   image: reportservice:latest
   name: reportservice
 
+aiservice:
+  image: aiservice:latest
+  name: aiservice
+
 ollama:
   model: smollm2:135m
 
