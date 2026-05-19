@@ -88,10 +88,24 @@ curl "http://localhost:8080/api/ai/openai?prompt=Hello"
 
 ## Configuration
 
-Edit [application.properties](src/main/resources/application.properties):
+### Enabling / Disabling AI Patterns
+
+Both AI patterns can be toggled independently in [`contrast-cargo-cats/values.yaml`](../../contrast-cargo-cats/values.yaml) without rebuilding images — just run `make deploy`:
+
+```yaml
+ai:
+  chatbotEnabled: true   # explicit chatbot in aiservice (/api/ai/openai)
+  shadowEnabled: true    # shadow AI insight injection in reportservice
+```
+
+Set either to `false` to disable that pattern. This is useful for demos where you want to show the shadow AI pattern in isolation, or to compare Contrast's observations before and after enabling each one.
+
+### aiservice application.properties
+
+Fine-grained configuration for `aiservice` can also be set via [application.properties](src/main/resources/application.properties):
 
 ```properties
-# Enable/disable AI service (default: true)
+# Enable/disable AI service (default: true — also controlled by ai.chatbotEnabled in values.yaml)
 ai.demo.enabled=true
 
 # Ollama base URL (default: http://ollama:11434/v1)

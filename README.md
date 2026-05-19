@@ -123,6 +123,14 @@ For detailed information about the security vulnerabilities present in this appl
 
 For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
 
+Both patterns can be toggled independently in `values.yaml` without rebuilding images:
+
+```yaml
+ai:
+  chatbotEnabled: true   # explicit chatbot in aiservice
+  shadowEnabled: true    # shadow AI insight injection in reportservice
+```
+
 This documentation covers:
 - Cross-Site Scripting (XSS)
 - SQL Injection
