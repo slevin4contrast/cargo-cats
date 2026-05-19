@@ -26,6 +26,8 @@ flowchart TB
                 LS["<b>labelservice</b><br/>Node.js<br/>━━━━━━<br/><font color='#c00'>⚠️ SSJS</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 DC["<b>docservice</b><br/>Python<br/>━━━━━━<br/><font color='#c00'>⚠️ XXE</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 RS["<b>reportservice</b><br/>Java<br/>━━━━━━<br/><font color='#c00'>⚠️ SSTI</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                AS["<b>aiservice</b><br/>Java<br/>━━━━━━<br/><font color='#555'>🤖 AI SDK demo</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                OL[("</b>ollama</b><br/>local LLM")]
                 DB[("<b>MySQL</b><br/>db + credit_cards")]
             end
         end
@@ -59,6 +61,8 @@ flowchart TB
     FG --> LS
     FG --> DC
     FG --> RS
+    FG --> AS
+    AS --> OL
     DS --> DB
     WH --> DB
 
@@ -87,7 +91,7 @@ flowchart TB
 
 ### Vulnerable Application Services
 
-The core application consists of seven intentionally vulnerable microservices:
+The core application consists of eight intentionally vulnerable microservices:
 
 - **Frontgateservice** (Java/Spring Boot) - Web frontend, authentication, and API gateway to other services
 - **Dataservice** (Java/Spring Boot) - Handles data operations and payment processing
@@ -96,6 +100,7 @@ The core application consists of seven intentionally vulnerable microservices:
 - **Labelservice** (Node.js) - Generates shipping labels and handles address processing
 - **Docservice** (Python/Flask) - DOCX document processor
 - **Reportservice** (Java/Tomcat) - Shipping report template engine
+- **AiService** (Java/Spring Boot) - Standalone AI service using a local Ollama LLM via the OpenAI Java SDK. Demonstrates Contrast's ability to detect AI SDK usage, including "hidden AI" patterns where AI enriches normal business flows without an explicit AI-branded feature
 
 ### Simulation and Monitoring Tools
 

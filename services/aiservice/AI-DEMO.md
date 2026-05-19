@@ -1,40 +1,50 @@
-# AI API Integration
+# AI Service Demo
 
-This document describes the AI API integration feature in the dataservice, which demonstrates how Contrast Security agents detect AI SDK usage in customer applications.
+This document describes the standalone `aiservice`, which demonstrates how Contrast Security agents detect AI SDK usage in customer applications — including **hidden AI** patterns where AI is embedded in normal business flows.
 
 ## Overview
 
 The AI Service makes real chat completion calls using:
 - **OpenAI Java SDK** — pointed at a local [Ollama](https://ollama.com) instance running as a Kubernetes pod
 
-No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm2:135m` (~270 MB), the smallest available Ollama model.
+No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm2:135m` (~270 MB).
 
 ## How It Works
 
-When the dataservice starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm2:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
+When `aiservice` starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm2:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
 
 ### Architecture
 
 ```
 [Browser / Traffic Generator]
           ↓
-[frontgateservice]  →  GET /api/ai/openai?prompt=...
-          ↓
-[dataservice — AiController]
+[frontgateservice]
+    ↓               ↓
+GET /api/ai/openai  POST /api/reports/generate
+    ↓               ↓ (silently calls AI to enrich report)
+[aiservice — AiController]
           ↓
 [AiService — OpenAI Java SDK]
           ↓
-[Ollama pod — ollama:11434/v1]   (OpenAI-compatible)
+[ollama pod — ollama:11434/v1]   (OpenAI-compatible)
           ↓
-  qwen2.5:0.5b model (real inference)
+  smollm2:135m model (real inference)
 ```
+
+### Two AI Usage Patterns
+
+#### 1. Explicit AI — Shipping Advisor
+The `/api/ai/openai` endpoint is called directly from the dashboard and simulation console. Users interact with it knowingly via the "Shipping Advisor" widget.
+
+#### 2. Hidden AI — Report Insights
+When a user generates a shipping report (`/api/reports/generate`), `frontgateservice` silently calls `/api/ai/summarize-report` to enrich the rendered report with a one-sentence logistics insight. There is no AI button or AI label visible to the user — it appears as "Logistics Analysis". Contrast detects the OpenAI SDK call occurring inside what looks like a report generation flow.
 
 ### Startup Sequence
 
 1. Ollama pod starts and launches `ollama serve`
-2. Startup script pulls the configured model into the PVC (cached on subsequent restarts)
+2. Startup script pulls the configured model into the PVC (cached on subsequent restarts — PVC is preserved across `make deploy` via `helm.sh/resource-policy: keep`)
 3. Ollama readiness probe passes once `/api/tags` responds
-4. dataservice initializes the OpenAI client pointing at `http://ollama:11434/v1`
+4. `aiservice` initializes the OpenAI client pointing at `http://ollama:11434/v1`
 5. Contrast agent instruments the OpenAI SDK at load time
 
 ## Prerequisites
@@ -42,30 +52,30 @@ When the dataservice starts, `AiService` initializes an `OpenAIOkHttpClient` wit
 - **Docker Desktop memory: 12 GB minimum, 14 GB recommended** (Settings → Resources → Memory). The default 8 GB is not sufficient for the full stack plus Ollama.
 - Kubernetes cluster is running and `make deploy` has been executed
 
-## Testing the Demo
-
-### Prerequisites
-
-- dataservice is running on `http://localhost:8080`
-- Contrast Java agent is attached (optional, but recommended to see instrumentation)
-
-### Endpoints
+## Endpoints
 
 #### Health Check
 ```bash
 curl http://cargocats.localhost/api/ai/health
 ```
 
-#### OpenAI API Call (through ingress)
+#### Explicit AI — Chat Completion
 ```bash
 curl "http://cargocats.localhost/api/ai/openai?prompt=What%20are%20best%20practices%20for%20shipping%20cats%20safely?"
 ```
 
 Returns a real response from the local model. First call after pod startup may take 5–20 seconds on CPU.
 
-#### Direct to dataservice (with port-forward)
+#### Hidden AI — Report Summarization
 ```bash
-kubectl port-forward svc/contrast-cargo-cats-dataservice 8080:8080
+curl -X POST http://cargocats.localhost/api/ai/summarize-report \
+  -H "Content-Type: text/plain" \
+  -d "Shipment SHIP-1234 from Portland, OR to Austin, TX for Jane Smith."
+```
+
+#### Direct to aiservice (with port-forward)
+```bash
+kubectl port-forward svc/aiservice 8080:8080
 curl "http://localhost:8080/api/ai/openai?prompt=Hello"
 ```
 
@@ -86,22 +96,12 @@ ai.demo.model=smollm2:135m
 
 ### Changing the Model
 
-Update `values.yaml` to change the model pulled by the Ollama pod and used by the dataservice:
+Update `values.yaml` to change the model pulled by the Ollama pod and used by `aiservice`:
 
 ```yaml
 ollama:
   model: llama3.2   # or any model available at https://ollama.com/library
 ```
-
-### Disabling the Service
-
-To disable the service:
-
-```properties
-ai.demo.enabled=false
-```
-
-When disabled, the service will skip initialization and endpoints will return error responses.
 
 ## What Contrast Agents Observe
 
@@ -116,6 +116,8 @@ When the Contrast Java agent is attached, it instruments the OpenAI SDK and emit
 
 These appear in the Contrast UI under **AI Usage** in the Security Observability section, identical to observations from production apps calling `api.openai.com`.
 
+The hidden AI pattern is particularly compelling: Contrast surfaces the `ai_usage` event from within the report generation flow, showing that AI usage can be detected even when it is not labeled or exposed as a feature.
+
 ## Demo Flow for SEs
 
 1. **Deploy the stack**
@@ -123,30 +125,44 @@ These appear in the Contrast UI under **AI Usage** in the Security Observability
    make deploy
    ```
 
-2. **Wait for Ollama to be ready** (~30s on first run while the model downloads)
+2. **Wait for Ollama to be ready** (~30s on first run while the model downloads; instant on subsequent deploys due to PVC caching)
    ```bash
    kubectl rollout status deployment/ollama
+   kubectl exec $(kubectl get pod -l app=ollama -o jsonpath='{.items[0].metadata.name}') -- ollama list
    ```
 
-3. **Trigger the AI endpoint** (or let the traffic generator do it automatically)
+3. **Trigger explicit AI** (or let the traffic simulation do it automatically in Phase 10)
    ```bash
    curl "http://cargocats.localhost/api/ai/openai?prompt=Hello"
    ```
 
-4. **Observe in Contrast UI**
-   - Navigate to the application in TeamServer/SaaS
+4. **Trigger hidden AI** — generate a report from the UI at `http://cargocats.localhost/reports` or run the traffic simulation (Phase 9 calls `/api/reports/generate` which silently invokes AI)
+
+5. **Observe in Contrast UI**
+   - Navigate to the `aiservice` application in TeamServer/SaaS
    - Look for **AI Usage** observations
-   - You will see `ai_usage.api_url = http://ollama:11434/v1` and the model name
+   - Note that the hidden AI calls appear under the same instrumentation as the explicit ones
 
 ## Implementation Details
 
-### Service Class: `AiService`
+### `AiService` class (`services/aiservice/`)
 
 - **Initialization** (`@PostConstruct`): Initializes the OpenAI client pointing at Ollama
 - **Methods**:
-  - `openai(prompt)` — Calls the Ollama-served chat completion API via the OpenAI Java SDK
+  - `chat(prompt)` — Explicit chat completion via the OpenAI Java SDK
+  - `summarizeReport(content)` — Hidden AI: generates a logistics insight for a rendered report
   - `isEnabled()` — Returns whether the service is active
 - **Cleanup** (`@PreDestroy`): Closes the OpenAI client
+
+### Troubleshooting
+
+**404: model not found**
+```bash
+kubectl exec $(kubectl get pod -l app=ollama -o jsonpath='{.items[0].metadata.name}') -- ollama pull smollm2:135m
+```
+
+**Expect 2–10 seconds per request for `smollm2:135m`.**
+
 
 ### Controller Class: `AiController`
 
