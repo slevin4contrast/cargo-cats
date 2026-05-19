@@ -25,7 +25,7 @@ flowchart TB
                 IS["<b>imageservice</b><br/>.NET<br/>━━━━━━<br/><font color='#c00'>⚠️ Path Traversal</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 LS["<b>labelservice</b><br/>Node.js<br/>━━━━━━<br/><font color='#c00'>⚠️ SSJS</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 DC["<b>docservice</b><br/>Python<br/>━━━━━━<br/><font color='#c00'>⚠️ XXE</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
-                RS["<b>reportservice</b><br/>Java<br/>━━━━━━<br/><font color='#c00'>⚠️ SSTI</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                RS["<b>reportservice</b><br/>Java<br/>━━━━━━<br/><font color='#c00'>⚠️ SSTI</font> · <font color='#555'>🤖 shadow AI</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 AS["<b>aiservice</b><br/>Java<br/>━━━━━━<br/><font color='#555'>🤖 AI SDK demo</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 OL[("</b>ollama</b><br/>local LLM")]
                 DB[("<b>MySQL</b><br/>db + credit_cards")]
@@ -63,6 +63,7 @@ flowchart TB
     FG --> RS
     FG --> AS
     AS --> OL
+    RS --> OL
     DS --> DB
     WH --> DB
 
@@ -99,8 +100,8 @@ The core application consists of eight intentionally vulnerable microservices:
 - **Imageservice** (C#/.NET) - Manages photo uploads and file operations
 - **Labelservice** (Node.js) - Generates shipping labels and handles address processing
 - **Docservice** (Python/Flask) - DOCX document processor
-- **Reportservice** (Java/Tomcat) - Shipping report template engine
-- **AiService** (Java/Spring Boot) - Standalone AI service using a local Ollama LLM via the OpenAI Java SDK. Demonstrates Contrast's ability to detect AI SDK usage, including "hidden AI" patterns where AI enriches normal business flows without an explicit AI-branded feature
+- **Reportservice** (Java/Tomcat) - Shipping report template engine with shadow AI: the OpenAI Java SDK is embedded directly inside the report rendering servlet, silently enriching reports with a logistics insight via Ollama. There is no AI-branded endpoint — Contrast detects the AI SDK usage from inside what appears to be a pure report rendering service.
+- **AiService** (Java/Spring Boot) - Dedicated AI service for the "Shipping Advisor" chatbot. Uses the OpenAI Java SDK pointed at a local Ollama instance, representing explicit/declared AI usage.
 
 ### Simulation and Monitoring Tools
 
@@ -117,6 +118,10 @@ The deployment includes comprehensive security monitoring and traffic simulation
 ### 📋 Vulnerability Documentation
 
 For detailed information about the security vulnerabilities present in this application, including exploitation steps and attack scenarios, see the **[Security Vulnerabilities Documentation](vulnerabilities.md)**.
+
+### 🤖 AI Demo
+
+For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
 
 This documentation covers:
 - Cross-Site Scripting (XSS)

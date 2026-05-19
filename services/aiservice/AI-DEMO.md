@@ -1,45 +1,47 @@
-# AI Service Demo
+# AI Demo
 
-This document describes the standalone `aiservice`, which demonstrates how Contrast Security agents detect AI SDK usage in customer applications — including **hidden AI** patterns where AI is embedded in normal business flows.
+This document describes how Cargo Cats demonstrates two distinct AI usage patterns, both detected by Contrast Security agents.
 
 ## Overview
 
-The AI Service makes real chat completion calls using:
-- **OpenAI Java SDK** — pointed at a local [Ollama](https://ollama.com) instance running as a Kubernetes pod
+Both patterns use the **OpenAI Java SDK** pointed at a local [Ollama](https://ollama.com) instance running as a Kubernetes pod. No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and reports calls exactly as it would for calls to `api.openai.com`. The default model is `smollm2:135m` (~270 MB).
 
-No external API keys are required. Ollama runs inside the cluster, serving an OpenAI-compatible API at `http://ollama:11434/v1`. The Contrast Java agent instruments the OpenAI SDK and observes the calls exactly as it would for calls to `api.openai.com`. The default model is `smollm2:135m` (~270 MB).
+## Two AI Usage Patterns
+
+### Pattern 1: "Proper AI" — Explicit Chatbot (aiservice)
+
+The `aiservice` is a dedicated Spring Boot microservice with a clearly named AI endpoint. `frontgateservice` calls it by name for the "Shipping Advisor" chatbot visible on the dashboard. This represents **declared, intentional AI usage** — a developer has explicitly added an AI service to the architecture.
+
+### Pattern 2: "Shadow AI" — Hidden AI in a Business Flow (reportservice)
+
+The `reportservice` is a shipping report template engine. It is not named or branded as an AI service. But embedded directly inside `ReportTemplateServlet.doPost()` is a `LogisticsInsightService` that uses the OpenAI Java SDK to silently call Ollama after each report is rendered, injecting a `logistics_insight` field into the JSON response. This field surfaces in the UI as "Logistics Analysis" — no AI label, no dedicated AI service in the call chain.
+
+This represents **shadow AI** or **undeclared AI usage**: a developer has embedded an AI SDK call inside a service that has no AI-branded role. Contrast surfaces the `ai_usage` event from inside `reportservice`, showing that AI can be detected even when it is hidden in a business flow.
 
 ## How It Works
 
-When `aiservice` starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. Ollama runs as a Kubernetes pod, serving an OpenAI-compatible API pre-loaded with a small language model (`smollm2:135m` by default) that returns real responses. The Contrast agent instruments the SDK's internal `WithRawResponseImpl` classes, capturing the model name, API URL, and provider.
+When `aiservice` starts, `AiService` initializes an `OpenAIOkHttpClient` with `baseUrl=http://ollama:11434/v1`. When `reportservice` starts, `LogisticsInsightService` does the same — independently, with no coordination with `aiservice`. Ollama serves both from the same pod. The Contrast agent instruments each SDK instance separately.
 
 ### Architecture
 
 ```
 [Browser / Traffic Generator]
           ↓
-[frontgateservice]
+   [frontgateservice]
     ↓               ↓
 GET /api/ai/openai  POST /api/reports/generate
-    ↓               ↓ (silently calls AI to enrich report)
-[aiservice — AiController]
-          ↓
-[AiService — OpenAI Java SDK]
-          ↓
-[ollama pod — ollama:11434/v1]   (OpenAI-compatible)
-          ↓
-  smollm2:135m model (real inference)
+    ↓                           ↓
+[aiservice]              [reportservice]
+ (explicit chatbot)   (report engine — shadow AI)
+    ↓                           ↓
+    └────────────┬──────────────┘
+                 ↓
+       [ollama pod — :11434/v1]
+                 ↓
+         smollm2:135m model
 ```
 
-### Two AI Usage Patterns
-
-#### 1. Explicit AI — Shipping Advisor
-The `/api/ai/openai` endpoint is called directly from the dashboard and simulation console. Users interact with it knowingly via the "Shipping Advisor" widget.
-
-#### 2. Hidden AI — Report Insights
-When a user generates a shipping report (`/api/reports/generate`), `frontgateservice` silently calls `/api/ai/summarize-report` to enrich the rendered report with a one-sentence logistics insight. There is no AI button or AI label visible to the user — it appears as "Logistics Analysis". Contrast detects the OpenAI SDK call occurring inside what looks like a report generation flow.
-
-### Startup Sequence
+## Startup Sequence
 
 1. Ollama pod starts and launches `ollama serve`
 2. Startup script pulls the configured model into the PVC (cached on subsequent restarts — PVC is preserved across `make deploy` via `helm.sh/resource-policy: keep`)
@@ -48,6 +50,7 @@ When a user generates a shipping report (`/api/reports/generate`), `frontgateser
 5. Contrast agent instruments the OpenAI SDK at load time
 
 ## Prerequisites
+
 
 - **Docker Desktop memory: 12 GB minimum, 14 GB recommended** (Settings → Resources → Memory). The default 8 GB is not sufficient for the full stack plus Ollama.
 - Kubernetes cluster is running and `make deploy` has been executed
@@ -59,19 +62,23 @@ When a user generates a shipping report (`/api/reports/generate`), `frontgateser
 curl http://cargocats.localhost/api/ai/health
 ```
 
-#### Explicit AI — Chat Completion
+#### Explicit AI — Chatbot (aiservice)
 ```bash
 curl "http://cargocats.localhost/api/ai/openai?prompt=What%20are%20best%20practices%20for%20shipping%20cats%20safely?"
 ```
 
 Returns a real response from the local model. First call after pod startup may take 5–20 seconds on CPU.
 
-#### Hidden AI — Report Summarization
+#### Shadow AI — Report with Logistics Insight (reportservice)
+
+Trigger from the UI at `http://cargocats.localhost/reports`, or via the API:
 ```bash
-curl -X POST http://cargocats.localhost/api/ai/summarize-report \
-  -H "Content-Type: text/plain" \
-  -d "Shipment SHIP-1234 from Portland, OR to Austin, TX for Jane Smith."
+curl -X POST http://cargocats.localhost/api/reports/generate \
+  -H "Content-Type: application/json" \
+  -d '{"template":"Shipment ${shipment_id} from ${origin} to ${destination}.","shipmentId":"SHIP-001","origin":"Portland, OR","destination":"Austin, TX"}'
 ```
+
+The response includes `logistics_insight` generated by the embedded AI call inside `reportservice`.
 
 #### Direct to aiservice (with port-forward)
 ```bash
@@ -136,38 +143,30 @@ The hidden AI pattern is particularly compelling: Contrast surfaces the `ai_usag
    curl "http://cargocats.localhost/api/ai/openai?prompt=Hello"
    ```
 
-4. **Trigger hidden AI** — generate a report from the UI at `http://cargocats.localhost/reports` or run the traffic simulation (Phase 9 calls `/api/reports/generate` which silently invokes AI)
+4. **Trigger shadow AI** — generate a report from the UI at `http://cargocats.localhost/reports`, or run the traffic simulation (Phase 9 calls `/api/reports/generate`). The report engine silently calls Ollama via the OpenAI SDK.
 
 5. **Observe in Contrast UI**
-   - Navigate to the `aiservice` application in TeamServer/SaaS
-   - Look for **AI Usage** observations
-   - Note that the hidden AI calls appear under the same instrumentation as the explicit ones
+   - Navigate to **`aiservice`** — shows `ai_usage` events from the explicit chatbot
+   - Navigate to **`reportservice`** — shows `ai_usage` events from the shadow AI call embedded in the report rendering servlet
+   - Point out that `reportservice` is not named or branded as an AI service — Contrast found it anyway
 
 ## Implementation Details
 
-### `AiService` class (`services/aiservice/`)
+### Pattern 1: `AiService` + `AiController` (`services/aiservice/`)
 
-- **Initialization** (`@PostConstruct`): Initializes the OpenAI client pointing at Ollama
+- **Initialization** (`@PostConstruct`): Initializes `OpenAIOkHttpClient` pointing at Ollama
 - **Methods**:
   - `chat(prompt)` — Explicit chat completion via the OpenAI Java SDK
-  - `summarizeReport(content)` — Hidden AI: generates a logistics insight for a rendered report
   - `isEnabled()` — Returns whether the service is active
 - **Cleanup** (`@PreDestroy`): Closes the OpenAI client
+- **Endpoints**: `GET /api/ai/health`, `GET /api/ai/openai?prompt=<text>`
 
-### Troubleshooting
+### Pattern 2: `LogisticsInsightService` (`services/reportservice/`)
 
-**404: model not found**
-```bash
-kubectl exec $(kubectl get pod -l app=ollama -o jsonpath='{.items[0].metadata.name}') -- ollama pull smollm2:135m
-```
-
-**Expect 2–10 seconds per request for `smollm2:135m`.**
-
-
-### Controller Class: `AiController`
-
-- **Health Endpoint**: `GET /api/ai/health`
-- **OpenAI Endpoint**: `GET /api/ai/openai?prompt=<text>`
+- **Plain Java class** (no Spring, no IoC) — initialized in `ReportTemplateServlet.init()`
+- **Constructor**: Reads `OLLAMA_BASE_URL` and `OLLAMA_MODEL` env vars, initializes `OpenAIOkHttpClient` with a 90-second timeout
+- **`getInsight(reportText)`**: Calls Ollama via the OpenAI SDK with a logistics analyst system prompt; returns `null` on any exception so report rendering is never blocked
+- **Call site**: `ReportTemplateServlet.doPost()` calls `insightService.getInsight(result)` after FreeMarker rendering and includes the result as `logistics_insight` in the JSON response
 
 ## Benefits
 
@@ -202,13 +201,13 @@ kubectl exec deployment/ollama -- ollama list
 
 Available models: https://ollama.com/library
 
-### dataservice fails to connect to Ollama
+### reportservice not showing logistics_insight
 
-The dataservice starts before Ollama finishes pulling its model. Wait for Ollama to be ready, then restart the dataservice:
+The reportservice starts before Ollama finishes pulling its model. Wait for Ollama to be ready, then restart reportservice:
 
 ```bash
 kubectl rollout status deployment/ollama
-kubectl rollout restart deployment/contrast-cargo-cats-dataservice
+kubectl rollout restart deployment/contrast-cargo-cats-reportservice
 ```
 
 ### Slow responses
@@ -218,14 +217,12 @@ Ollama runs on CPU inside Docker Desktop. Expect 2–10 seconds per request for 
 ### Contrast agent not detecting calls
 
 Ensure:
-- Contrast agent is properly attached to the dataservice pod
-- `ai.demo.enabled=true` in application.properties
+- Contrast agent is properly attached to the `aiservice` and/or `reportservice` pods
+- `ai.demo.enabled=true` in `aiservice`'s `application.properties`
 - The Ollama pod is `Running` and passing its readiness probe
-- The endpoint is being reached (check dataservice logs for `Calling OpenAI API`)
+- For shadow AI: check `reportservice` logs for `Requesting logistics insight from AI`
 
 ## Dependencies
 
-- `com.openai:openai-java:4.14.2` - OpenAI SDK
-- `com.anthropic:anthropic-java:0.3.5` - Anthropic SDK
-- `com.github.tomakehurst:wiremock-jre8:3.0.1` - WireMock for mocking
+- `com.openai:openai-java:4.35.0` — OpenAI Java SDK (used in both `aiservice` and `reportservice`)
 
