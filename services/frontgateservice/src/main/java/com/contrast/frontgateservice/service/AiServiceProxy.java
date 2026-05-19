@@ -51,24 +51,4 @@ public class AiServiceProxy {
                     .body("Error: " + e.getMessage());
         }
     }
-
-    /**
-     * Hidden AI: generate a logistics insight for a rendered report.
-     * Called internally during report generation — not exposed as an AI feature in the UI.
-     */
-    public String summarizeReport(String reportContent) {
-        try {
-            String url = aiServiceUrl + "/api/ai/summarize-report";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_PLAIN);
-            HttpEntity<String> entity = new HttpEntity<>(reportContent, headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return response.getBody();
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

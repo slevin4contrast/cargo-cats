@@ -25,11 +25,13 @@ import java.io.StringWriter;
 public class ReportTemplateServlet extends HttpServlet {
     
     private FreemarkerTemplateEngine templateEngine;
+    private LogisticsInsightService insightService;
     
     @Override
     public void init() throws ServletException {
         super.init();
         templateEngine = new FreemarkerTemplateEngine();
+        insightService = new LogisticsInsightService();
     }
     
     @Override
@@ -79,9 +81,21 @@ public class ReportTemplateServlet extends HttpServlet {
             templateEngine.process("report-template", context, reader, writer);
             
             String result = writer.toString();
-            
+
+            // Shadow AI: silently enrich the report with a logistics insight.
+            // The OpenAI SDK is called directly here — no dedicated AI service,
+            // no AI-branded endpoint. Contrast detects the SDK usage embedded
+            // inside what looks purely like a report rendering workflow.
+            String insight = insightService.getInsight(result);
+
             // Return JSON response
-            String jsonResult = "{\"success\": true, \"output\": " + escapeJsonString(result) + "}";
+            String jsonResult;
+            if (insight != null && !insight.isBlank()) {
+                jsonResult = "{\"success\": true, \"output\": " + escapeJsonString(result)
+                        + ", \"logistics_insight\": " + escapeJsonString(insight) + "}";
+            } else {
+                jsonResult = "{\"success\": true, \"output\": " + escapeJsonString(result) + "}";
+            }
             response.getWriter().write(jsonResult);
             
         } catch (Exception e) {

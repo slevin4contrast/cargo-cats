@@ -33,19 +33,4 @@ public class AiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
     }
-
-    @PostMapping("/api/ai/summarize-report")
-    public ResponseEntity<String> summarizeReport(@RequestBody String content) {
-        try {
-            logger.info("Hidden AI: summarizing report for logistics insights");
-            String result = aiService.summarizeReport(content);
-            if (result == null) {
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Service not available");
-            }
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            logger.error("Error in summarize-report endpoint", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
-        }
-    }
 }
