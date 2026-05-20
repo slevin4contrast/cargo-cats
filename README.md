@@ -170,7 +170,7 @@ Before you can deploy Cargo Cats, ensure you have the following installed:
    CONTRAST__AGENT__TOKEN=your-contrast-agent-token
    CONTRAST__UNIQ__NAME=your-unique-name
    ```
-      **Note**: The `CONTRAST__UNIQ__NAME` value will be used to ensure your application and server names are unique in the Contrast UI, preventing conflicts with other deployments.
+      **Note**: The `CONTRAST__UNIQ__NAME` value is prepended to each service's application name in Contrast, following the pattern `{CONTRAST__UNIQ__NAME}-cargocats-{service}` (e.g. `bob-cargocats-frontgateservice`). This keeps your application and server names unique in the Contrast UI and prevents conflicts with other deployments. Pick something that identifies you (your name, initials, etc).
 
 
    **Optional**: For advanced features, you can also set these additional environment variables:
