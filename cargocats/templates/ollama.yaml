@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ollama
-          image: ollama/ollama:latest
+          image: ollama/ollama:0.7.1
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -33,17 +33,27 @@ spec:
               mountPath: /root/.ollama
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
               memory: "3Gi"
               cpu: "2000m"
-          readinessProbe:
+          livenessProbe:
             httpGet:
               path: /api/tags
               port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ollama list | grep -q {{ .Values.ollama.model | quote }}
             initialDelaySeconds: 15
-            periodSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 60
       volumes:
         - name: ollama-data
           emptyDir: {}
