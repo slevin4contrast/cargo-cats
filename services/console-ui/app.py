@@ -12,6 +12,7 @@ import io
 import json
 import base64
 import re
+import yaml
 from typing import Dict, Optional
 from kubernetes import client, config
 
@@ -128,6 +129,36 @@ if contrast_api_authorization:
 else:
     logger.warning("Contrast API authorization not found in environment")
 
+
+def get_contrast_server_environment() -> str:
+    """Read server.environment from the Contrast agent operator's ClusterAgentConfiguration.
+
+    Returns the environment string (e.g. 'QA') or '' if unavailable, so the URL
+    can omit the &environment=... filter rather than break the landing page.
+    """
+    try:
+        custom = client.CustomObjectsApi()
+        # CRD is namespaced despite the "Cluster" prefix in its Kind
+        obj = custom.get_namespaced_custom_object(
+            group="agents.contrastsecurity.com",
+            version="v1beta1",
+            namespace="contrast-agent-operator",
+            plural="clusteragentconfigurations",
+            name="default-agent-configuration",
+        )
+        agent_yaml = obj.get("spec", {}).get("template", {}).get("spec", {}).get("yaml", "")
+        parsed = yaml.safe_load(agent_yaml) or {}
+        # `server:` with no children parses as None, so coalesce before .get
+        env = (parsed.get("server") or {}).get("environment") or ""
+        valid = {"QA", "PRODUCTION", "DEVELOPMENT"}
+        if env and env not in valid:
+            logger.warning(f"Ignoring invalid Contrast server.environment '{env}'; expected one of {sorted(valid)}")
+            return ""
+        return env
+    except Exception as e:
+        logger.warning(f"Could not read Contrast server environment from operator config: {e}")
+        return ""
+
 zap_url = "http://zapproxy:80"
 first_run = True
 scan_running = False
@@ -154,11 +185,14 @@ def hello_world():
     
     # Get CONTRAST__UNIQ__NAME from environment
     contrast_uniq_name = os.getenv('CONTRAST__UNIQ__NAME', '')
-    
+
     # Format the contrast URL with org ID and uniq name if available
     formatted_contrast_url = ''
     if contrast_org_id and contrast_uniq_name and contrast_base_url:
-        formatted_contrast_url = f"{contrast_base_url}/Contrast/cs/index.html#/{contrast_org_id}/explorer?search={contrast_uniq_name}-cargocats&environment=QA"
+        formatted_contrast_url = f"{contrast_base_url}/Contrast/cs/index.html#/{contrast_org_id}/explorer?search={contrast_uniq_name}-cargocats"
+        contrast_server_environment = get_contrast_server_environment()
+        if contrast_server_environment:
+            formatted_contrast_url += f"&environment={contrast_server_environment}"
     
     return render_template('index.html', 
                            contrast_url=formatted_contrast_url,
