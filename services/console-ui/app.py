@@ -101,6 +101,18 @@ contrast_base_url = ''
 contrast_api_key = ''
 contrast_api_authorization = ''
 
+
+def parse_bool_env(var_name: str, default: bool = False) -> bool:
+    """Parse common boolean env var values safely for Python 3.12+."""
+    value = os.getenv(var_name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+# Feature flag for optional AI phase in normal traffic generation.
+# Defaults to enabled to preserve existing behavior unless explicitly disabled.
+traffic_ai_phase_enabled = parse_bool_env('TRAFFIC_AI_PHASE_ENABLED', True)
+
 # Try to get Contrast API token from environment - do this only once at startup
 contrast_api_token = os.getenv('CONTRAST__AGENT__TOKEN', '')
 contrast_api_key = os.getenv('CONTRAST__API__KEY', '')
@@ -2046,22 +2058,30 @@ def traffic():
         # ================================================
         # PHASE 10: AI API INTEGRATION
         # ================================================
-        traffic_state = "ai_integration"
-        log_traffic_output("Phase 10: AI API integration")
-        
-        # AI service health check
-        try:
-            r = session.get("http://cargocats.localhost/api/ai/health", timeout=5, allow_redirects=False)
-            log_traffic_output(f"AI service health check - Status: {r.status_code}")
-        except Exception as e:
-            log_traffic_output(f"AI health check failed: {str(e)}", "WARNING")
-        
-        # OpenAI API call
-        try:
-            r = session.get("http://cargocats.localhost/api/ai/openai?prompt=What%20are%20the%20best%20practices%20for%20shipping%20cats%20safely?", timeout=60, allow_redirects=False)
-            log_traffic_output(f"AI OpenAI API call - Status: {r.status_code}")
-        except Exception as e:
-            log_traffic_output(f"AI OpenAI call failed: {str(e)}", "WARNING")
+        if traffic_ai_phase_enabled:
+            traffic_state = "ai_integration"
+            log_traffic_output("Phase 10: AI API integration")
+
+            ai_available = False
+            # AI service health check
+            try:
+                r = session.get("http://cargocats.localhost/api/ai/health", timeout=5, allow_redirects=False)
+                log_traffic_output(f"AI service health check - Status: {r.status_code}")
+                ai_available = (r.status_code == 200)
+            except Exception as e:
+                log_traffic_output(f"AI health check failed: {str(e)}", "WARNING")
+
+            # Only make the slower OpenAI call when AI is actually enabled/healthy.
+            if ai_available:
+                try:
+                    r = session.get("http://cargocats.localhost/api/ai/openai?prompt=What%20are%20the%20best%20practices%20for%20shipping%20cats%20safely?", timeout=60, allow_redirects=False)
+                    log_traffic_output(f"AI OpenAI API call - Status: {r.status_code}")
+                except Exception as e:
+                    log_traffic_output(f"AI OpenAI call failed: {str(e)}", "WARNING")
+            else:
+                log_traffic_output("AI phase skipped: AI service is disabled or unavailable", "WARNING")
+        else:
+            log_traffic_output("Phase 10 skipped: TRAFFIC_AI_PHASE_ENABLED is false")
 
         traffic_state = "finished"
         log_traffic_output("Traffic generation completed successfully")
