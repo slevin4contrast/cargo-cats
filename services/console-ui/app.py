@@ -1743,7 +1743,7 @@ def traffic():
         
         # Successful login
         success_creds = {"username": "admin", "password": "password123"}
-        r = session.post("http://cargocats.localhost/login", data=success_creds, timeout=10, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/login", data=success_creds, timeout=10, allow_redirects=True)
         log_traffic_output(f"Successful login attempt - Status: {r.status_code}")
         
         # ================================================
@@ -1834,12 +1834,12 @@ def traffic():
         log_traffic_output(f"Non-existent image view test - Status: {r.status_code}")
         
         # Test upload without file parameter
-        r = session.post("http://cargocats.localhost/api/photos/upload", data={}, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/photos/upload", data={}, timeout=15, allow_redirects=False)
         log_traffic_output(f"Image upload without file test - Status: {r.status_code}")
         
         # Test upload with invalid file type (text file)
         invalid_files = {'file': ('test.txt', b'This is not an image', 'text/plain')}
-        r = session.post("http://cargocats.localhost/api/photos/upload", files=invalid_files, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/photos/upload", files=invalid_files, timeout=15, allow_redirects=False)
         log_traffic_output(f"Invalid file upload test - Status: {r.status_code}")
         
         # Add new cat with image
@@ -1848,12 +1848,12 @@ def traffic():
             "type": "Persian", 
             "image": f"/api/photos/view?path={uploaded_image_path}" if uploaded_image_path else None
         }
-        r = session.post("http://cargocats.localhost/api/cats", json=cat_data_with_image, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/cats", json=cat_data_with_image, timeout=15, allow_redirects=False)
         log_traffic_output(f"Cats API POST new cat with image - Status: {r.status_code}")
         
         # Add new cat without image (original test)
         cat_data = {"name": "muppet_no_image", "type": "Persian", "image": None}
-        r = session.post("http://cargocats.localhost/api/cats", json=cat_data, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/cats", json=cat_data, timeout=15, allow_redirects=False)
         log_traffic_output(f"Cats API POST new cat without image - Status: {r.status_code}")
         
         # Test DELETE cat endpoint using a separate session (not logged in)
@@ -2067,7 +2067,8 @@ def traffic():
             try:
                 r = session.get("http://cargocats.localhost/api/ai/health", timeout=60, allow_redirects=False)
                 log_traffic_output(f"AI service health check - Status: {r.status_code}")
-                ai_available = (r.status_code == 200)
+                # Treat 2xx and 3xx as available (includes redirects); 4xx/5xx as unavailable
+                ai_available = (r.status_code < 400)
             except Exception as e:
                 log_traffic_output(f"AI health check failed: {str(e)}", "WARNING")
 
