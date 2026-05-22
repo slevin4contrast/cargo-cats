@@ -1810,7 +1810,7 @@ def traffic():
             log_traffic_output(f"Using cat.jpg for image upload, size: {len(cat_image_data)} bytes")
         
         files = {'file': ('cat.jpg', cat_image_data, 'image/jpeg')}
-        r = session.post("http://cargocats.localhost/api/photos/upload", files=files, timeout=10, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/photos/upload", files=files, timeout=30, allow_redirects=False)
         log_traffic_output(f"Cat.jpg image upload - Status: {r.status_code}")
         
         # Parse the upload response to get the image path
@@ -1939,7 +1939,7 @@ def traffic():
                 "id": 1
             }
         }
-        r = session.post("http://cargocats.localhost/api/webhook/test-shipment-notification", json=test_notification_body, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/webhook/test-shipment-notification", json=test_notification_body, timeout=30, allow_redirects=False)
         log_traffic_output(f"Webhook API POST test-shipment-notification - Status: {r.status_code}")
         
         webhook_body = {"notificationUrl": "https://contrastsecurity.com", "webhookMethod": "GET"}
@@ -1947,7 +1947,7 @@ def traffic():
         log_traffic_output(f"Webhook API PATCH shipments/1/webhook - Status: {r.status_code}")
         
         body = {"url": "contrastsecurity.com"}
-        r = session.post("http://cargocats.localhost/api/webhook/test-connection", json=body, timeout=5, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/webhook/test-connection", json=body, timeout=30, allow_redirects=False)
         log_traffic_output(f"Webhook API POST test-connection - Status: {r.status_code}")
 
         # ================================================
@@ -2043,6 +2043,16 @@ def traffic():
         }
         r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data, timeout=60, allow_redirects=False)
         log_traffic_output(f"Report generation POST - Status: {r.status_code}")
+
+        # Simulate clicking "Generate Summary" button with the rendered report text
+        try:
+            report_result = r.json()
+            if report_result.get("success") and report_result.get("output"):
+                summary_data = {"reportText": report_result["output"]}
+                r2 = session.post("http://cargocats.localhost/api/reports/summarize", json=summary_data, timeout=120, allow_redirects=False)
+                log_traffic_output(f"Report AI summary POST (ollama) - Status: {r2.status_code}")
+        except Exception as e:
+            log_traffic_output(f"Report summary skipped: {str(e)}", "WARNING")
 
         # Generate a second report with different data
         report_data_2 = {

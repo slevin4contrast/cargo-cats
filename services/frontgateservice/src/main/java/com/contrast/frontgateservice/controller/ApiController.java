@@ -828,6 +828,27 @@ public class ApiController {
         }
     }
 
+    @PostMapping("/reports/summarize")
+    public ResponseEntity<String> summarizeReport(@RequestBody Map<String, String> body) {
+        try {
+            String reportText = body.get("reportText");
+            if (reportText == null || reportText.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\": \"reportText is required\"}");
+            }
+            ResponseEntity<String> response = reportServiceProxy.getInsight(reportText);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (Exception e) {
+            logger.error("Report summarize error: {}", e.getMessage());
+            return ResponseEntity.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\": \"Summarize failed: " + e.getMessage() + "\"}");
+        }
+    }
+
     @GetMapping("/reports/health")
     public ResponseEntity<String> checkReportServiceHealth() {
         try {
