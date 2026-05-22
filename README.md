@@ -119,18 +119,6 @@ The deployment includes comprehensive security monitoring and traffic simulation
 
 For detailed information about the security vulnerabilities present in this application, including exploitation steps and attack scenarios, see the **[Security Vulnerabilities Documentation](vulnerabilities.md)**.
 
-### 🤖 AI Demo
-
-For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
-
-Both patterns can be toggled independently in `values.yaml` without rebuilding images:
-
-```yaml
-ai:
-  chatbotEnabled: true   # explicit chatbot in aiservice
-  shadowEnabled: true    # shadow AI insight injection in reportservice
-```
-
 This documentation covers:
 - Cross-Site Scripting (XSS)
 - SQL Injection
@@ -145,6 +133,18 @@ This documentation covers:
 - Weak Password Storage (MD5 Hashing)
 - Missing Authentication
 - Insecure Session Management - HTTPonly missing
+
+### 🤖 AI Observability Documentation
+
+For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
+
+Both patterns can be toggled independently in `values.yaml` without rebuilding images:
+
+```yaml
+ai:
+  chatbotEnabled: true   # explicit chatbot in aiservice
+  shadowEnabled: true    # shadow AI insight injection in reportservice
+```
 
 ## Prerequisites
 
