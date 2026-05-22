@@ -75,7 +75,7 @@ flowchart TB
     classDef vuln fill:#e8e8e8,stroke:#888,color:#000
     classDef sim  fill:#e6f3ff,stroke:#06c,color:#000
     classDef supp fill:#fff4d4,stroke:#c80,color:#000
-    class FG,DS,WH,IS,LS,DC,RS,DB,Ingress vuln
+    class FG,DS,WH,IS,LS,DC,RS,AS,OL,DB,Ingress vuln
     class CU,ZAP sim
     class EX,CDC,OSN,OSD supp
 ```
