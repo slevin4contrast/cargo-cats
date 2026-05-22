@@ -25,9 +25,16 @@ spec:
               OLLAMA_PID=$!
               until ollama list > /dev/null 2>&1; do sleep 1; done
               ollama pull {{ .Values.ollama.model }}
+              printf 'FROM %s\nPARAMETER num_thread 2\nPARAMETER num_ctx 2048\nPARAMETER num_predict 150\n' "{{ .Values.ollama.model }}" > /tmp/Modelfile.tuned
+              ollama create {{ .Values.ollama.model }}-tuned -f /tmp/Modelfile.tuned
               wait $OLLAMA_PID
           ports:
             - containerPort: 11434
+          env:
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "24h"
           volumeMounts:
             - name: ollama-data
               mountPath: /root/.ollama
@@ -50,7 +57,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - ollama list | grep -q {{ .Values.ollama.model | quote }}
+                - ollama list | grep -q {{ printf "%s-tuned" .Values.ollama.model | quote }}
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 60

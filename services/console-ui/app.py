@@ -2041,9 +2041,9 @@ def traffic():
             "origin": "Portland, OR",
             "destination": "Austin, TX"
         }
-        r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data, timeout=10, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data, timeout=60, allow_redirects=False)
         log_traffic_output(f"Report generation POST - Status: {r.status_code}")
-        
+
         # Generate a second report with different data
         report_data_2 = {
             "template": "Delivery Confirmation\n\nPackage ${shipmentId} for ${recipientName} has been delivered from ${origin} to ${destination}.",
@@ -2052,7 +2052,7 @@ def traffic():
             "origin": "Seattle, WA",
             "destination": "Denver, CO"
         }
-        r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data_2, timeout=10, allow_redirects=False)
+        r = session.post("http://cargocats.localhost/api/reports/generate", json=report_data_2, timeout=60, allow_redirects=False)
         log_traffic_output(f"Second report generation POST - Status: {r.status_code}")
 
         # ================================================
@@ -2065,7 +2065,7 @@ def traffic():
             ai_available = False
             # AI service health check
             try:
-                r = session.get("http://cargocats.localhost/api/ai/health", timeout=5, allow_redirects=False)
+                r = session.get("http://cargocats.localhost/api/ai/health", timeout=60, allow_redirects=False)
                 log_traffic_output(f"AI service health check - Status: {r.status_code}")
                 ai_available = (r.status_code == 200)
             except Exception as e:

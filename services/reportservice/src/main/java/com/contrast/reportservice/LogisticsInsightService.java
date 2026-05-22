@@ -64,6 +64,7 @@ public class LogisticsInsightService {
                             .model(ChatModel.of(modelName))
                             .addSystemMessage("You are a logistics analyst. Given a shipping report, provide a single brief operational insight or recommendation in one sentence.")
                             .addUserMessage(reportText)
+                            .maxCompletionTokens(80)
                             .build()
             );
             return response.choices().get(0).message().content().orElse(null);

@@ -31,7 +31,7 @@ spec:
           - name: AI_DEMO_OPENAI_BASE_URL
             value: "http://ollama:11434/v1"
           - name: AI_DEMO_MODEL
-            value: {{ .Values.ollama.model | quote }}
+            value: {{ printf "%s-tuned" .Values.ollama.model | quote }}
           - name: AI_DEMO_ENABLED
             value: {{ .Values.ai.chatbotEnabled | quote }}
           ports:
