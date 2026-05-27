@@ -90,7 +90,7 @@ curl "http://localhost:8080/api/ai/openai?prompt=Hello"
 
 ### Enabling / Disabling AI Patterns
 
-Both AI patterns can be toggled independently in [`contrast-cargo-cats/values.yaml`](../../contrast-cargo-cats/values.yaml) without rebuilding images — just run `make deploy`:
+Both AI patterns can be toggled independently in [`cargocats/values.yaml`](../cargocats/values.yaml) without rebuilding images — just run `make deploy`:
 
 ```yaml
 ai:
@@ -102,7 +102,7 @@ Set either to `false` to disable that pattern. This is useful for demos where yo
 
 ### aiservice application.properties
 
-Fine-grained configuration for `aiservice` can also be set via [application.properties](src/main/resources/application.properties):
+Fine-grained configuration for `aiservice` can also be set via [application.properties](../services/aiservice/src/main/resources/application.properties):
 
 ```properties
 # Enable/disable AI service (default: true — also controlled by ai.chatbotEnabled in values.yaml)

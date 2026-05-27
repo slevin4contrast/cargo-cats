@@ -117,7 +117,7 @@ The deployment includes comprehensive security monitoring and traffic simulation
 
 ### 📋 Vulnerability Documentation
 
-For detailed information about the security vulnerabilities present in this application, including exploitation steps and attack scenarios, see the **[Security Vulnerabilities Documentation](vulnerabilities.md)**.
+For detailed information about the security vulnerabilities present in this application, including exploitation steps and attack scenarios, see the **[Security Vulnerabilities Documentation](docs/vulnerabilities.md)**.
 
 This documentation covers:
 - Cross-Site Scripting (XSS)
@@ -136,7 +136,7 @@ This documentation covers:
 
 ### 🤖 AI Observability Documentation
 
-For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
+For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](docs/ai-demo.md)**.
 
 Both patterns can be toggled independently in `values.yaml` without rebuilding images:
 
@@ -159,7 +159,7 @@ Before you can deploy Cargo Cats, ensure you have the following installed:
      - If you already have Kubernetes running with kind, switch to kubeadm and reset the cluster
    - Wait for Kubernetes to start (green indicator)
 
-   > **Don't have Docker Desktop?** You can set up a local Kubernetes cluster using k3s or Minikube instead. See the **[Alternative Cluster Setup Guide](CLUSTER-SETUP.md)** for instructions.
+   > **Don't have Docker Desktop?** You can set up a local Kubernetes cluster using k3s or Minikube instead. See the **[Alternative Cluster Setup Guide](docs/cluster-setup.md)** for instructions.
 
 2. **Helm** (Kubernetes package manager)
    ```bash
