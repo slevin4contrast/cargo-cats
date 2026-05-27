@@ -8,6 +8,7 @@ import com.contrast.frontgateservice.service.UserService;
 import com.contrast.frontgateservice.service.LabelServiceProxy;
 import com.contrast.frontgateservice.service.DocServiceProxy;
 import com.contrast.frontgateservice.service.ReportServiceProxy;
+import com.contrast.frontgateservice.service.AiServiceProxy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -56,6 +57,9 @@ public class ApiController {
     
     @Autowired
     private ReportServiceProxy reportServiceProxy;
+    
+    @Autowired
+    private AiServiceProxy aiServiceProxy;
     
     @Autowired
     private UserService userService;
@@ -811,6 +815,7 @@ public class ApiController {
 
             ResponseEntity<String> response = reportServiceProxy.processTemplate(
                     template, shipmentId, recipientName, origin, destination);
+
             return ResponseEntity.status(response.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(response.getBody());
@@ -820,6 +825,27 @@ public class ApiController {
             return ResponseEntity.status(500)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{\"error\": \"Report generation failed: " + e.getMessage() + "\"}");
+        }
+    }
+
+    @PostMapping("/reports/summarize")
+    public ResponseEntity<String> summarizeReport(@RequestBody Map<String, String> body) {
+        try {
+            String reportText = body.get("reportText");
+            if (reportText == null || reportText.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\": \"reportText is required\"}");
+            }
+            ResponseEntity<String> response = reportServiceProxy.getInsight(reportText);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (Exception e) {
+            logger.error("Report summarize error: {}", e.getMessage());
+            return ResponseEntity.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\": \"Summarize failed: " + e.getMessage() + "\"}");
         }
     }
 
@@ -836,6 +862,39 @@ public class ApiController {
             return ResponseEntity.status(500)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{\"error\": \"Health check failed: " + e.getMessage() + "\"}");
+        }
+    }
+
+    // AI service endpoints
+    @GetMapping("/ai/health")
+    public ResponseEntity<String> checkAiServiceHealth() {
+        try {
+            logger.info("AI health check requested");
+            ResponseEntity<String> response = aiServiceProxy.healthCheck();
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (Exception e) {
+            logger.error("AI service health check error: {}", e.getMessage());
+            return ResponseEntity.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\": \"AI health check failed: " + e.getMessage() + "\"}");
+        }
+    }
+
+    @GetMapping("/ai/openai")
+    public ResponseEntity<String> callOpenAi(@RequestParam(required = false) String prompt) {
+        try {
+            logger.info("OpenAI endpoint called with prompt: {}", prompt);
+            ResponseEntity<String> response = aiServiceProxy.openai(prompt);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (Exception e) {
+            logger.error("OpenAI call error: {}", e.getMessage());
+            return ResponseEntity.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\": \"OpenAI call failed: " + e.getMessage() + "\"}");
         }
     }
 

@@ -25,7 +25,9 @@ flowchart TB
                 IS["<b>imageservice</b><br/>.NET<br/>━━━━━━<br/><font color='#c00'>⚠️ Path Traversal</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 LS["<b>labelservice</b><br/>Node.js<br/>━━━━━━<br/><font color='#c00'>⚠️ SSJS</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
                 DC["<b>docservice</b><br/>Python<br/>━━━━━━<br/><font color='#c00'>⚠️ XXE</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
-                RS["<b>reportservice</b><br/>Java<br/>━━━━━━<br/><font color='#c00'>⚠️ SSTI</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                RS["<b>reportservice</b><br/>Java<br/>━━━━━━<br/><font color='#c00'>⚠️ SSTI</font> · <font color='#555'>🤖 shadow AI</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                AS["<b>aiservice</b><br/>Java<br/>━━━━━━<br/><font color='#555'>🤖 AI SDK demo</font><br/>━━━━━━<br/>🛡️ <font color='#093'>Contrast</font> | <font color='#0066cc'>Falco</font>"]
+                OL[("</b>ollama</b><br/>local LLM")]
                 DB[("<b>MySQL</b><br/>db + credit_cards")]
             end
         end
@@ -59,6 +61,9 @@ flowchart TB
     FG --> LS
     FG --> DC
     FG --> RS
+    FG --> AS
+    AS --> OL
+    RS --> OL
     DS --> DB
     WH --> DB
 
@@ -70,7 +75,7 @@ flowchart TB
     classDef vuln fill:#e8e8e8,stroke:#888,color:#000
     classDef sim  fill:#e6f3ff,stroke:#06c,color:#000
     classDef supp fill:#fff4d4,stroke:#c80,color:#000
-    class FG,DS,WH,IS,LS,DC,RS,DB,Ingress vuln
+    class FG,DS,WH,IS,LS,DC,RS,AS,OL,DB,Ingress vuln
     class CU,ZAP sim
     class EX,CDC,OSN,OSD supp
 ```
@@ -87,7 +92,7 @@ flowchart TB
 
 ### Vulnerable Application Services
 
-The core application consists of seven intentionally vulnerable microservices:
+The core application consists of eight intentionally vulnerable microservices:
 
 - **Frontgateservice** (Java/Spring Boot) - Web frontend, authentication, and API gateway to other services
 - **Dataservice** (Java/Spring Boot) - Handles data operations and payment processing
@@ -95,7 +100,8 @@ The core application consists of seven intentionally vulnerable microservices:
 - **Imageservice** (C#/.NET) - Manages photo uploads and file operations
 - **Labelservice** (Node.js) - Generates shipping labels and handles address processing
 - **Docservice** (Python/Flask) - DOCX document processor
-- **Reportservice** (Java/Tomcat) - Shipping report template engine
+- **Reportservice** (Java/Tomcat) - Shipping report template engine with shadow AI: the OpenAI Java SDK is embedded directly inside the report rendering servlet, silently enriching reports with a logistics insight via Ollama. There is no AI-branded endpoint — Contrast detects the AI SDK usage from inside what appears to be a pure report rendering service.
+- **AiService** (Java/Spring Boot) - Dedicated AI service for the "Shipping Advisor" chatbot. Uses the OpenAI Java SDK pointed at a local Ollama instance, representing explicit/declared AI usage.
 
 ### Simulation and Monitoring Tools
 
@@ -128,12 +134,25 @@ This documentation covers:
 - Missing Authentication
 - Insecure Session Management - HTTPonly missing
 
+### 🤖 AI Observability Documentation
+
+For a walkthrough of the two AI usage patterns (explicit chatbot in `aiservice` and shadow AI embedded in `reportservice`), see the **[AI Demo Documentation](services/aiservice/AI-DEMO.md)**.
+
+Both patterns can be toggled independently in `values.yaml` without rebuilding images:
+
+```yaml
+ai:
+  chatbotEnabled: true   # explicit chatbot in aiservice
+  shadowEnabled: true    # shadow AI insight injection in reportservice
+```
+
 ## Prerequisites
 
 Before you can deploy Cargo Cats, ensure you have the following installed:
 
 1. **Docker Desktop** (recommended) with Kubernetes enabled
    - Install Docker Desktop
+   - **Important**: Go to Settings → Resources and allocate at least **12 GB of memory** (14 GB recommended). The default 8 GB is not sufficient.
    - Go to Settings → Kubernetes → Enable Kubernetes
    - **Important**: Cargo Cats requires the **kubeadm** Kubernetes provider. Recent versions of Docker Desktop changed the default provider to **kind**, which is not supported.
      - In Settings → Kubernetes, set the provider to **kubeadm** before enabling Kubernetes
