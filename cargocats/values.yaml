@@ -83,38 +83,12 @@ fluent-bit:
           Suppress_Type_Name On
 
 falco:
-  falco:
-    json_output: "true"
-    loglevel: "debug"
-    # Reduced resource usage to prevent eviction
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
-    # Add an empty dir volume mount to provide additional storage
-    extraVolumes:
-      - name: falco-cache
-        emptyDir:
-          sizeLimit: 1Gi
-    extraVolumeMounts:
-      - mountPath: /var/lib/falco
-        name: falco-cache
-  # Configure tolerations to handle disk pressure
-  tolerations:
-    - key: node.kubernetes.io/disk-pressure
-      operator: "Exists"
-      effect: "NoSchedule"
-    - key: node.kubernetes.io/disk-pressure
-      operator: "Exists"
-      effect: "NoExecute"
-      tolerationSeconds: 3600
-  falcoctl:
-    env:
-      - name: FALCOCTL_ARTIFACT_NOVERIFY
-        value: "true"
+  # Falco is disabled for Docker Desktop compatibility
+  # Docker Desktop uses LinuxKit kernel which lacks:
+  # - Kernel headers needed to compile eBPF probes
+  # - Prebuilt drivers for the specific kernel version
+  # Enable this when deploying to cloud environments (EKS, AKS, GKE) or VMs
+  enabled: false
 
 ingress-nginx:
   controller:
